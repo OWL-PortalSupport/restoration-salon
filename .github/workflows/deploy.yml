@@ -1,0 +1,53 @@
+# mainブランチにpushされた時にGitHub Pagesへデプロイを実行
+name: Deploy Pages
+
+on:
+  push:
+    branches:
+      - main
+
+# GitHub Pagesへのデプロイに必要な最小権限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 複数のデプロイが同時に実行されないように制御
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      # bun.lockbを基準に依存関係を固定してインストール
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Viteのビルド成果物がdistフォルダに生成される
+      - name: Build
+        run: bun run build
+
+      # GitHub Pagesへデプロイする静的ファイルのパス
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+  deploy:
+    environment:
+      name: github-pages
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
